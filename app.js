@@ -34,25 +34,26 @@ const S = {
 
 // ── Elementos DOM ────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const E = {
-  loading:   $("loading-overlay"),
-  loginBox:  $("login-container"),
-  panel:     $("panel-container"),
-  loginForm: $("login-form"),
-  loginErr:  $("login-error"),
-  logoutBtn: $("logout-btn"),
-  main:      $("main-content"),
-  nav:       $("sidebar-nav"),
-  userDisp:  $("username-display"),
-  title:     $("panel-title"),
-  titleMob:  $("panel-title-mobile"),
-  toast:     $("toast"),
-  modal:     $("modal-container"),
-  codesN:    $("codes-count-value"),
-  menuBtn:   $("mobile-menu-btn"),
-  overlay:   $("mobile-overlay"),
-  sidebar:   $("sidebar"),
-};
+const E = {};
+function initElements() {
+  E.loading   = $("loading-overlay");
+  E.loginBox  = $("login-container");
+  E.panel     = $("panel-container");
+  E.loginForm = $("login-form");
+  E.loginErr  = $("login-error");
+  E.logoutBtn = $("logout-btn");
+  E.main      = $("main-content");
+  E.nav       = $("sidebar-nav");
+  E.userDisp  = $("username-display");
+  E.title     = $("panel-title");
+  E.titleMob  = $("panel-title-mobile");
+  E.toast     = $("toast");
+  E.modal     = $("modal-container");
+  E.codesN    = $("codes-count-value");
+  E.menuBtn   = $("mobile-menu-btn");
+  E.overlay   = $("mobile-overlay");
+  E.sidebar   = $("sidebar");
+}
 
 // ── UI helpers ───────────────────────────────────────────────────
 const UI = {
@@ -1019,4 +1020,7 @@ function settings() {
 }
 
 // ── Start ─────────────────────────────────────────────────────────
-initAuth();
+document.addEventListener("DOMContentLoaded", () => {
+  initElements();
+  initAuth();
+});
