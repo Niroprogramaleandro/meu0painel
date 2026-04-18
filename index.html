@@ -1,75 +1,93 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Painel Android</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:8px;color:#94a3b8;font-size:.875rem;text-decoration:none;transition:.15s}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel Android</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:8px;color:#94a3b8;font-size:.875rem;text-decoration:none;transition:.15s;cursor:pointer;background:none;border:none;width:100%;text-align:left}
 .nav-item:hover{background:#334155;color:#f1f5f9}
 .nav-item.active{background:#1d4ed8;color:#fff}
-</style>
+.action-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;cursor:pointer;border:none;background:transparent;transition:.15s}
+.tbl-wrap{overflow-x:auto;max-height:520px;overflow-y:auto}
+thead th{position:sticky;top:0;z-index:5;background:#1e293b}
+.search-input{background:#1e293b;border:1px solid #334155;color:#f1f5f9;outline:none;border-radius:8px;padding:8px 14px;width:100%}
+.badge{font-size:.75rem;font-weight:500;padding:2px 10px;border-radius:9999px}
+.badge-indisp{background:#431407;color:#fb923c}
+.badge-ativo{background:#1e3a5f;color:#60a5fa}
+.badge-usado{background:#14532d;color:#4ade80}
+#sidebar.open{transform:translateX(0)!important}
+  </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen">
-
-<div id="loading" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-  <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-</div>
-
-<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-700 text-white px-5 py-3 rounded-xl shadow-lg z-50 text-sm opacity-0 translate-y-4 transition-all duration-300 pointer-events-none"></div>
-
-<div id="pg-login" class="min-h-screen flex items-center justify-center p-4">
-  <div class="bg-slate-800 rounded-2xl p-8 w-full max-w-sm border border-slate-700 shadow-2xl">
-    <div class="text-center mb-8">
-      <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">&#128250;</div>
-      <h1 class="text-2xl font-bold">Painel Android</h1>
-      <p class="text-slate-400 text-sm mt-1">Sistema de Ativacao</p>
-    </div>
-    <div id="login-err" class="hidden mb-4 bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-3 py-2"></div>
-    <div class="space-y-4">
-      <div>
-        <label class="block text-sm text-slate-300 mb-1">Usuario</label>
-        <input id="inp-user" type="text" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500"/>
-      </div>
-      <div>
-        <label class="block text-sm text-slate-300 mb-1">Senha</label>
-        <input id="inp-pass" type="password" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500"/>
-      </div>
-      <button id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg font-semibold transition">Entrar</button>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+  <div id="loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center">
+    <div class="flex flex-col items-center gap-3">
+      <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <span class="text-slate-300 text-sm">Carregando...</span>
     </div>
   </div>
-</div>
-
-<div id="pg-panel" class="hidden">
-  <div class="lg:hidden fixed top-0 left-0 right-0 z-30 bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center justify-between">
-    <button id="btn-menu" class="text-xl px-2">&#9776;</button>
-    <span id="panel-title" class="font-bold text-sm">Painel</span>
-    <div class="w-8"></div>
-  </div>
-  <div id="overlay" class="hidden fixed inset-0 bg-black/50 z-20 lg:hidden"></div>
-  <aside id="sidebar" class="fixed top-0 left-0 h-full w-60 bg-slate-800 border-r border-slate-700 z-30 flex flex-col -translate-x-full lg:translate-x-0 transition-transform duration-300">
-    <div class="p-5 border-b border-slate-700">
-      <div class="text-2xl mb-1">&#128250;</div>
-      <p id="sb-title" class="font-bold text-sm">Painel Android</p>
-      <p id="sb-user" class="text-slate-400 text-xs mt-0.5"></p>
-    </div>
-    <div class="px-4 py-3 border-b border-slate-700">
-      <div class="bg-slate-700 rounded-lg px-3 py-2 flex justify-between items-center">
-        <span class="text-xs text-slate-400">Codigos disponiveis</span>
-        <span id="sb-count" class="text-orange-400 font-bold text-sm">0</span>
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-700 text-white px-5 py-3 rounded-xl shadow-lg z-50 transition-all duration-300 opacity-0 translate-y-10 text-sm max-w-xs text-center pointer-events-none"></div>
+  <div id="modal-container" class="hidden fixed inset-0 bg-black bg-opacity-60 z-40 flex items-center justify-center p-4"></div>
+  <div id="login-container" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-slate-800 rounded-2xl shadow-2xl p-8 w-full max-w-sm border border-slate-700">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
+          <i data-lucide="tv" class="w-8 h-8 text-white"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-white">Painel Android</h1>
+        <p class="text-slate-400 text-sm mt-1">Sistema de Ativacao</p>
       </div>
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Usuario</label>
+          <input name="username" type="text" required class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Senha</label>
+          <input name="password" type="password" required class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500" />
+        </div>
+        <p id="login-error" class="text-red-400 text-sm hidden bg-red-900 bg-opacity-30 border border-red-800 rounded-lg px-3 py-2"></p>
+        <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Entrar</button>
+      </form>
     </div>
-    <nav id="sidebar-nav" class="flex-1 overflow-y-auto p-3 space-y-1"></nav>
-    <div class="p-3 border-t border-slate-700">
-      <button id="btn-logout" class="w-full text-left px-4 py-2 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition text-sm">&#128682; Sair</button>
-    </div>
-  </aside>
-  <main class="lg:ml-60 pt-14 lg:pt-0 min-h-screen">
-    <div id="main" class="p-4 md:p-6 max-w-5xl mx-auto"></div>
-  </main>
-</div>
-
-<script type="module" src="app.js"></script>
+  </div>
+  <div id="panel-container" class="hidden min-h-screen">
+    <header class="lg:hidden fixed top-0 left-0 right-0 z-30 bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center justify-between">
+      <button id="mobile-menu-btn" class="p-2 rounded-lg hover:bg-slate-700"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <span id="panel-title-mobile" class="font-bold text-white text-sm">Painel Android</span>
+      <div class="w-9"></div>
+    </header>
+    <div id="mobile-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"></div>
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-slate-800 border-r border-slate-700 z-30 flex flex-col -translate-x-full lg:translate-x-0 transition-transform duration-300">
+      <div class="p-5 border-b border-slate-700">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0"><i data-lucide="tv" class="w-5 h-5 text-white"></i></div>
+          <div class="min-w-0">
+            <p id="panel-title" class="font-bold text-white text-sm truncate">Painel Android</p>
+            <p id="username-display" class="text-slate-400 text-xs truncate"></p>
+          </div>
+        </div>
+      </div>
+      <div class="px-4 py-3 border-b border-slate-700">
+        <div class="flex items-center justify-between bg-slate-700 rounded-lg px-3 py-2">
+          <span class="text-xs text-slate-400">Codigos disponiveis</span>
+          <span id="codes-count-value" class="text-sm font-bold text-orange-400">0</span>
+        </div>
+      </div>
+      <nav id="sidebar-nav" class="flex-1 overflow-y-auto p-3 space-y-1"></nav>
+      <div class="p-3 border-t border-slate-700">
+        <button id="logout-btn" class="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition-colors text-sm">
+          <i data-lucide="log-out" class="w-4 h-4"></i> Sair
+        </button>
+      </div>
+    </aside>
+    <main class="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
+      <div id="main-content" class="p-4 md:p-6 max-w-7xl mx-auto"></div>
+    </main>
+  </div>
+  <script type="module" src="firebase-config.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
