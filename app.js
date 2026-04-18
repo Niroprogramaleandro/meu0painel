@@ -1020,7 +1020,6 @@ function settings() {
 }
 
 // ── Start ─────────────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", () => {
-  initElements();
-  initAuth();
-});
+// Módulos ES6 já executam após o DOM estar pronto
+initElements();
+initAuth();
