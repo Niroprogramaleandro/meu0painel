@@ -133,8 +133,8 @@ const DB = {
     S.configs = cfSnap.docs.map(d => ({ id:d.id, ...d.data() }));
 
     // Notificações (todos)
-    const nSnap = await getDocs(query(collection(db,"notifications"), orderBy("createdAt","desc")));
-    S.notifs = nSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+    const nSnap = await getDocs(collection(db,"notifications"));
+    S.notifs = nSnap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => (b.createdAt||"").localeCompare(a.createdAt||""));
 
     if (role === "superadmin" || role === "master") {
       const uQ = role === "superadmin"
@@ -143,8 +143,8 @@ const DB = {
       const uSnap = await getDocs(uQ);
       S.users = uSnap.docs.map(d => ({ id:d.id, ...d.data() })).filter(u => u.role !== "superadmin");
 
-      const tSnap = await getDocs(query(collection(db,"transfers"), where("fromId","==",uid), orderBy("createdAt","desc")));
-      S.transfers = tSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+      const tSnap = await getDocs(query(collection(db,"transfers"), where("fromId","==",uid)));
+      S.transfers = tSnap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => (b.createdAt||"").localeCompare(a.createdAt||""));
     }
   },
 
