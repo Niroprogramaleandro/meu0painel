@@ -270,7 +270,6 @@ function renderSidebar() {
     { id:"resellers",     icon:"users",             label:"Usuários",           show:role==="superadmin"||role==="master" },
     { id:"transfer",      icon:"send",              label:"Transferir Códigos", show:role==="superadmin"||(role==="master"&&hasRecharge) },
     { id:"notifications", icon:"bell",              label:"Notificações",       show:role==="superadmin" },
-    { id:"download",      icon:"download",          label:"Baixar Ativador",    show:true },
     { id:"settings",      icon:"settings",          label:"Configurações",      show:true },
   ];
 
@@ -293,7 +292,7 @@ function renderSidebar() {
 
 // ── Page router ───────────────────────────────────────────────────
 function renderPage() {
-  const pages = { dashboard, codes, configs, resellers, transfer, notifications, download, settings };
+  const pages = { dashboard, codes, configs, resellers, transfer, notifications, settings };
   E.main.innerHTML = (pages[S.page] || dashboard)();
   E.nav.querySelectorAll("[data-page]").forEach(b => b.classList.toggle("active", b.dataset.page === S.page));
   lucide.createIcons();
@@ -369,11 +368,25 @@ function codes() {
   const filtered = S.codes.filter(c => {
     const t = S.codesSearch.toLowerCase();
     return c.code.toLowerCase().includes(t) || c.configFile.toLowerCase().includes(t);
-  }).reverse();
+  });
 
-  const totalPages = Math.ceil(filtered.length / S.codesPerPage);
+  // Reorganizar códigos: Ativos primeiro, depois Indisponíveis, depois Usados
+  const sortedCodes = filtered.sort((a, b) => {
+    const statusOrder = { "Ativo": 1, "Indisponível": 2, "Usado": 3 };
+    const aOrder = statusOrder[a.status] || 4;
+    const bOrder = statusOrder[b.status] || 4;
+    
+    if (aOrder !== bOrder) {
+      return aOrder - bOrder;
+    }
+    
+    // Se mesmo status, ordenar por data de criação (mais recente primeiro)
+    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+  });
+
+  const totalPages = Math.ceil(sortedCodes.length / S.codesPerPage);
   const start = (S.codesPage - 1) * S.codesPerPage;
-  const paged = filtered.slice(start, start + S.codesPerPage);
+  const paged = sortedCodes.slice(start, start + S.codesPerPage);
 
   const rows = paged.map(c => `
     <tr class="border-b border-slate-700 hover:bg-slate-700/30">
@@ -386,18 +399,25 @@ function codes() {
           ? `<div class="text-green-400">${fmtDate(c.usedAt)}</div>${c.usedByIP?`<div class="text-slate-500">IP: ${c.usedByIP}</div>`:""}`
           : '<span class="text-slate-600">—</span>'}
       </td>
+      <td class="p-3 text-xs text-center">
+        ${c.status==="Usado" ? `<span class="text-orange-400 font-bold">${c.reactivationCount || 0}/3</span>` : '<span class="text-slate-600">—</span>'}
+      </td>
       <td class="p-3 text-right whitespace-nowrap">
         ${c.status==="Ativo" ? `
           <button data-code="${c.code}" class="action-btn btn-copy-51 text-blue-400 hover:bg-blue-900/30" title="Copiar instruções v5.1"><i data-lucide="clipboard-copy" class="w-4 h-4"></i></button>
           <button data-code="${c.code}" class="action-btn btn-copy-52 text-purple-400 hover:bg-purple-900/30" title="Copiar instruções v5.2"><i data-lucide="clipboard-list" class="w-4 h-4"></i></button>
           <button data-code="${c.code}" class="action-btn btn-copy-54 text-pink-400 hover:bg-pink-900/30" title="Copiar instruções v5.4"><i data-lucide="clipboard-check" class="w-4 h-4"></i></button>
+          <button data-code="${c.code}" class="action-btn btn-mark-used text-teal-400 hover:bg-teal-900/30" title="Marcar como usado"><i data-lucide="check-circle" class="w-4 h-4"></i></button>
           <button data-code="${c.code}" class="action-btn btn-deactivate text-orange-400 hover:bg-orange-900/30" title="Tornar indisponível"><i data-lucide="pause-circle" class="w-4 h-4"></i></button>
         ` : ""}
         ${c.status==="Indisponível" ? `
           <button data-code="${c.code}" class="action-btn btn-activate text-green-400 hover:bg-green-900/30" title="Ativar"><i data-lucide="play" class="w-4 h-4"></i></button>
         ` : ""}
-        ${c.status==="Usado" && (!c.reactivationCount || c.reactivationCount < 1) ? `
-          <button data-code="${c.code}" class="action-btn btn-reactivate text-yellow-400 hover:bg-yellow-900/30" title="Reativar"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+        ${c.status==="Usado" && (!c.reactivationCount || c.reactivationCount < 3) ? `
+          <button data-code="${c.code}" class="action-btn btn-reactivate text-yellow-400 hover:bg-yellow-900/30" title="Reutilizar Código (${c.reactivationCount || 0}/3)"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+        ` : ""}
+        ${c.status==="Usado" && (S.user.role==="superadmin" || S.user.role==="master") ? `
+          <button data-code="${c.code}" class="action-btn btn-reset-reactivation text-purple-400 hover:bg-purple-900/30" title="Resetar contador de reutilizações"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
         ` : ""}
         <button data-code="${c.code}" class="action-btn btn-delete text-red-400 hover:bg-red-900/30" title="Excluir"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
       </td>
@@ -409,10 +429,15 @@ function codes() {
   return `
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
       <h1 class="text-3xl font-bold text-white">Códigos</h1>
+      <div class="flex gap-2 text-xs">
+        <span class="bg-green-900/30 text-green-400 px-2 py-1 rounded">Ativos: ${S.codes.filter(c => c.status==="Ativo").length}</span>
+        <span class="bg-orange-900/30 text-orange-400 px-2 py-1 rounded">Indisponíveis: ${S.codes.filter(c => c.status==="Indisponível").length}</span>
+        <span class="bg-teal-900/30 text-teal-400 px-2 py-1 rounded">Usados: ${usedCount}</span>
+      </div>
     </div>
     ${usedCount > 0 ? `
-    <div class="bg-green-900/20 border-l-4 border-green-500 p-4 rounded-lg mb-4 flex flex-col md:flex-row items-center justify-between gap-3">
-      <p class="text-sm text-white">Você tem <strong class="text-green-400">${usedCount} código(s) usado(s)</strong>. Limpe para liberar espaço.</p>
+    <div class="bg-teal-900/20 border-l-4 border-teal-500 p-4 rounded-lg mb-4 flex flex-col md:flex-row items-center justify-between gap-3">
+      <p class="text-sm text-white">Você tem <strong class="text-teal-400">${usedCount} código(s) usado(s)</strong>. Códigos usados aparecem no final da lista e podem ser reutilizados até 3 vezes cada.</p>
       <button id="btn-del-used" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 whitespace-nowrap">
         <i data-lucide="trash-2" class="w-4 h-4"></i> Apagar Todos Usados
       </button>
@@ -427,14 +452,14 @@ function codes() {
         <table class="w-full text-sm">
           <thead><tr class="text-left text-slate-400 text-xs uppercase">
             <th class="p-3">Código</th><th class="p-3">Arquivo</th><th class="p-3">Status</th>
-            <th class="p-3">Criado em</th><th class="p-3">Ativado pelo cliente</th><th class="p-3 text-right">Ações</th>
+            <th class="p-3">Criado em</th><th class="p-3">Ativado pelo cliente</th><th class="p-3">Reutilizações</th><th class="p-3 text-right">Ações</th>
           </tr></thead>
-          <tbody>${rows || '<tr><td colspan="6" class="p-8 text-center text-slate-500">Nenhum código cadastrado</td></tr>'}</tbody>
+          <tbody>${rows || '<tr><td colspan="7" class="p-8 text-center text-slate-500">Nenhum código cadastrado</td></tr>'}</tbody>
         </table>
       </div>
       ${totalPages > 1 ? `
       <div class="bg-slate-700/50 p-4 flex justify-between items-center border-t border-slate-700 text-sm">
-        <span class="text-slate-400">Mostrando ${start+1}–${Math.min(start+S.codesPerPage,filtered.length)} de ${filtered.length}</span>
+        <span class="text-slate-400">Mostrando ${start+1}–${Math.min(start+S.codesPerPage,sortedCodes.length)} de ${sortedCodes.length}</span>
         <div class="flex gap-2">
           <button id="pg-prev" ${S.codesPage===1?"disabled":""} class="px-3 py-1.5 bg-slate-700 rounded-lg disabled:opacity-40">‹</button>
           <span class="px-3 py-1.5 text-white">Pág ${S.codesPage}/${totalPages}</span>
@@ -479,14 +504,53 @@ function bindCodesEvents() {
     });
   }));
 
-  document.querySelectorAll(".btn-reactivate").forEach(b => b.addEventListener("click", () => {
-    UI.confirm(`Reativar código "${b.dataset.code}"?`, async () => {
+  document.querySelectorAll(".btn-mark-used").forEach(b => b.addEventListener("click", () => {
+    UI.confirm(`Marcar código "${b.dataset.code}" como usado?`, async () => {
       const c = S.codes.find(x => x.code===b.dataset.code);
       if (!c) return;
-      c.status = "Ativo"; c.activatedAt = new Date().toISOString();
-      delete c.usedAt; delete c.usedByIP;
-      c.reactivationCount = (c.reactivationCount||0) + 1;
-      await DB.saveCode(c); UI.updateCount(); renderPage(); UI.toast("Código reativado!");
+      c.status = "Usado"; 
+      c.usedAt = new Date().toISOString();
+      c.usedByIP = "Manual"; // Indica que foi marcado manualmente
+      await DB.saveCode(c); UI.updateCount(); renderPage(); UI.toast("Código marcado como usado!");
+    });
+  }));
+
+  document.querySelectorAll(".btn-reactivate").forEach(b => b.addEventListener("click", () => {
+    const code = b.dataset.code;
+    const c = S.codes.find(x => x.code === code);
+    if (!c) return;
+    
+    const currentCount = c.reactivationCount || 0;
+    const maxReactivations = 3;
+    
+    if (currentCount >= maxReactivations) {
+      UI.toast("Este código já atingiu o limite máximo de reutilizações.");
+      return;
+    }
+    
+    UI.confirm(`Reutilizar código "${code}"? (${currentCount + 1}/${maxReactivations})`, async () => {
+      c.status = "Ativo"; 
+      c.activatedAt = new Date().toISOString();
+      delete c.usedAt; 
+      delete c.usedByIP;
+      c.reactivationCount = currentCount + 1;
+      await DB.saveCode(c); 
+      UI.updateCount(); 
+      renderPage(); 
+      UI.toast(`Código reutilizado! (${c.reactivationCount}/${maxReactivations} usos)`);
+    });
+  }));
+
+  document.querySelectorAll(".btn-reset-reactivation").forEach(b => b.addEventListener("click", () => {
+    const code = b.dataset.code;
+    const c = S.codes.find(x => x.code === code);
+    if (!c) return;
+    
+    UI.confirm(`Resetar contador de reutilizações do código "${code}"? Isso permitirá reutilizar o código novamente.`, async () => {
+      c.reactivationCount = 0;
+      await DB.saveCode(c); 
+      renderPage(); 
+      UI.toast("Contador de reutilizações resetado!");
     });
   }));
 
