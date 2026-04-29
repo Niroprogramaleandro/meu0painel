@@ -429,10 +429,15 @@ function codes() {
   return `
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
       <h1 class="text-3xl font-bold text-white">Códigos</h1>
-      <div class="flex gap-2 text-xs">
-        <span class="bg-green-900/30 text-green-400 px-2 py-1 rounded">Ativos: ${S.codes.filter(c => c.status==="Ativo").length}</span>
-        <span class="bg-orange-900/30 text-orange-400 px-2 py-1 rounded">Indisponíveis: ${S.codes.filter(c => c.status==="Indisponível").length}</span>
-        <span class="bg-teal-900/30 text-teal-400 px-2 py-1 rounded">Usados: ${usedCount}</span>
+      <div class="flex gap-2 items-center">
+        <div class="flex gap-2 text-xs">
+          <span class="bg-green-900/30 text-green-400 px-2 py-1 rounded">Ativos: ${S.codes.filter(c => c.status==="Ativo").length}</span>
+          <span class="bg-orange-900/30 text-orange-400 px-2 py-1 rounded">Indisponíveis: ${S.codes.filter(c => c.status==="Indisponível").length}</span>
+          <span class="bg-teal-900/30 text-teal-400 px-2 py-1 rounded">Usados: ${usedCount}</span>
+        </div>
+        <button id="btn-mark-code-used" class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
+          <i data-lucide="check-circle" class="w-3 h-3"></i> Marcar como Usado
+        </button>
       </div>
     </div>
     ${usedCount > 0 ? `
@@ -579,6 +584,47 @@ function bindCodesEvents() {
   });
   $("pg-prev")?.addEventListener("click", () => { S.codesPage--; renderPage(); });
   $("pg-next")?.addEventListener("click", () => { S.codesPage++; renderPage(); });
+
+  // Botão para marcar código específico como usado
+  $("btn-mark-code-used")?.addEventListener("click", () => {
+    UI.modal({
+      title: "Marcar Código como Usado",
+      body: `<div class="space-y-3">
+        ${UI.inp("Código de 11 dígitos", "text", "", "Ex: 27842481002")}
+        <p class="text-xs text-slate-500">Digite o código que você quer marcar como usado</p>
+      </div>`,
+      footer: `<button class="c-cancel px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-sm text-white">Cancelar</button>
+               <button class="c-mark px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm">Marcar como Usado</button>`,
+      onRender(m) {
+        m.querySelector(".c-cancel").onclick = UI.closeModal;
+        m.querySelector(".c-mark").onclick = async () => {
+          const codigo = m.querySelector("input").value.trim();
+          if (!codigo) { UI.toast("Digite o código."); return; }
+          
+          const c = S.codes.find(x => x.code === codigo);
+          if (!c) { UI.toast("Código não encontrado."); return; }
+          if (c.status === "Usado") { UI.toast("Código já está marcado como usado."); return; }
+          
+          UI.load(true);
+          try {
+            c.status = "Usado"; 
+            c.usedAt = new Date().toISOString();
+            c.usedByIP = "Manual-Painel";
+            await DB.saveCode(c); 
+            UI.updateCount(); 
+            renderPage(); 
+            UI.closeModal();
+            UI.toast("Código marcado como usado com sucesso!");
+          } catch(e) {
+            UI.toast("Erro ao marcar código.");
+            console.error(e);
+          } finally {
+            UI.load(false);
+          }
+        };
+      }
+    });
+  });
 }
 
 // ── PAGE: Configs (.config) ───────────────────────────────────────
